@@ -41,12 +41,18 @@ from PyQt5 import uic
 
 from qgis.core import *
 from qgis.gui import *
+from datetime import datetime
 
 DEBUG_FAVR_PLUGIN=True
+LOG_FILE = 'c:/temp/log.csv'
 
-def log(msg):
-    if DEBUG_FAVR_PLUGIN:
-        QgsMessageLog.logMessage(msg, 'FormAwareValueRelation')
+def log99(msg):
+    g = open(LOG_FILE, "a")
+    g.write('\n\'{0}\'; \'{1}\''.format(msg,datetime.now()))
+    g.close()
+
+#    if DEBUG_FAVR_PLUGIN:
+#        QgsMessageLog.logMessage(msg, 'FormAwareValueRelation')
 
 def tr(text):
     # "Fixes" #3 ;-)
@@ -169,6 +175,7 @@ def tr(text):
 
 class FormAwareValueRelationWidgetPlugin():
     def __init__(self, iface):
+        log99('wp__init__')
         self.my_factory = FormAwareValueRelationWidgetFactory('Form Value Relation')
         QgsGui.editorWidgetRegistry().registerWidget( 'formawarevaluerelationwidget', self.my_factory)
         # Add to iface to not gc
@@ -177,10 +184,13 @@ class FormAwareValueRelationWidgetPlugin():
         iface._WidgetPlugin = self.my_factory
 
     def initGui(self):
-        pass
+        log99('wp_initGui')
+#        pass
 
     def unload(self):
-        QgsExpression.unregisterFunction("CurrentFormValue")
+        log99('wp_unload')
+#        pass
+#        QgsExpression.unregisterFunction("CurrentFormValue")
 
 
 
@@ -206,6 +216,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
         """
         QgsVectorLayer* vl, int fieldIdx, QWidget* editor, QWidget* parent
         """
+        log99('ww__init__')
         self.mComboBox = None
         self.mListWidget = None
         self.mLineEdit = None
@@ -225,12 +236,14 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
 
     def valid(self):
+        log99('ww_valid')
         return  isinstance(self.editor, QComboBox) or \
                 isinstance(self.editor, QListWidget) or \
                 isinstance(self.editor, QLineEdit)
 
 
     def get_cache_v_from_k(self, k):
+        log99('ww_get_cache_v_from_k')
         for f in self.mCache:
             if f.attributes()[self.key_index] == k:
                 return f.attributes()[self.value_index]
@@ -238,6 +251,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
 
     def get_cache_k_from_v(self, v):
+        log99('ww_get_cache_k_from_v')
         for f in self.mCache:
             if f.attributes()[self.value_index] == v:
                 return f.attributes()[self.key_index]
@@ -245,6 +259,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
 
     def representValue(self, value):
+        log99('ww_representValue')
         """This function knows how to represent the value"""
         v = unicode(value)
         if isinstance(self.editor, QComboBox):
@@ -257,6 +272,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
 
     def setFeature(self, feature):
+        log99('ww_setFeature')
         super(FormAwareValueRelationWidgetWrapper, self).setFeature(feature)
         self.mFeature = feature
         self.createCache(True)
@@ -266,6 +282,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
 
     def value(self):
+        log99('ww_value')
         v = ''
         if isinstance(self.editor, QComboBox):
             cbxIdx = self.editor.currentIndex()
@@ -284,29 +301,34 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
                 if f.attributes()[self.value_index] == self.editor.text():
                     v = str(f.attributes()[self.key_index])
         else:
-            log('WARNING: no widgets!')
-        log("Returning value %s" % v)
+            log99('WARNING: no widgets!')
+        log99("Returning value %s" % v)
         return v
 
 
     def createWidget(self, parent):
+        log99('ww_createWidget')
         """Store m references but do not use them! Use self.editor set in initWidget instead"""
         if hasattr(parent, 'attributeChanged'):
             self.parent().attributeChanged.connect(self.attributeChanged)
+            log99('ww_createWidget attchg connect')
         if self.config( "AllowMulti" ) == '1':
             self.mListWidget = QListWidget( parent )
             self.mListWidget.itemChanged.connect(self.valueChanged)
+            log99('ww_createWidget out 1')
             return self.mListWidget
         elif self.config( "UseCompleter" ) == '1':
             self.mLineEdit = QgsFilterLineEdit( parent )
+            log99('ww_createWidget out 2')
             return self.mLineEdit
         self.mComboBox = QComboBox( parent )
         self.mComboBox.currentIndexChanged.connect(self.valueChanged)
+        log99('ww_createWidget out 3')
         return self.mComboBox
 
 
     def initWidget(self, editor):
-        log('initWidget')
+        log99('ww_initWidget')
         self.editor = editor
         self.createCache()
         self.populateWidget(editor)
@@ -316,20 +338,20 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
         """
         Something has changed in the form
         """
-        log('attributeChanged %s %s' % (name, value))
+        log99('ww_attributeChanged %s %s' % (name, value))
         if self.expression is not None \
             and ( name in self.expression.referencedColumns() \
                 or self.expression.expression().find("'%s'" % name) != -1 ):
             self.populateWidget()
         else:
-            log('attributeChanged: no expression or var is not in expression')
+            log99('ww_attributeChanged: no expression or var is not in expression')
 
 
     def populateWidget(self, editor=None):
         """
         Filter possibly cached widget values
         """
-        log('populateWidget')
+        log99('ww_populateWidget')
         #if self.context is None:
         #    return
 
@@ -366,7 +388,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
 
         # Makes a filtered copy of the cache, keeping only attributes
         if self.expression is not None:
-            log(self.expression.dump())
+            log99(self.expression.dump())
             cache = []
             for f in self.mCache:
                 self.context.setFeature( f )
@@ -386,7 +408,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
             if self.config( "AllowNull" ) == '1':
                 self.editor.addItem( tr( "(no selection)" ), '')
             for k,i in cache:
-                #log("Adding items: %s %s" % (i,k))
+                log99("Adding items: %s %s" % (i,k))
                 self.editor.addItem(i, k)
         elif isinstance(self.editor, QListWidget):
             self.editor.clear()
@@ -401,10 +423,11 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
             self.completer.setCaseSensitivity( Qt.CaseInsensitive )
             self.editor.setCompleter(self.completer)
         else:
-            log('WARNING: unknown widget!')
+            log99('WARNING: unknown widget!')
 
 
     def setValue(self, value):
+        log99('ww_setValue')
         if isinstance(self.editor, QListWidget):
             checkList = str(value)[1:-1].split( ',' )
             for i in range(self.editor.count()):
@@ -422,7 +445,7 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
         """
         Creates the cache
         """
-        log('createCache called')
+        log99('ww_createCache called')
         if not (force_creation or self.mCache is None):
             return
         layer = QgsProject.instance().mapLayer( self.config( "Layer" ) )
@@ -433,10 +456,8 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
             ki = layer.fieldNameIndex( self.config( "Key" ) )
             vi = layer.fieldNameIndex( self.config( "Value" ) )
 
-            context = QgsExpressionContext()
-            context << QgsExpressionContextUtils.globalScope()
-            context << QgsExpressionContextUtils.projectScope()
-            context << QgsExpressionContextUtils.layerScope( layer )
+            context = QgsExpressionContext()  
+            context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes( layer ))
 
             e = None
             if  self.config( "FilterExpression" ):
@@ -478,12 +499,13 @@ class FormAwareValueRelationWidgetWrapper(QgsEditorWidgetWrapper):
             self.expression = e
 
         self.mCache = cache
-        log('createCache: created!')
+        log99('createCache: created!')
 
 # QgsEditorConfigWidget
 class FormAwareValueRelationConfigDlg(QgsEditorConfigWidget):
 
     def __init__(self, vl, fieldIdx, parent):
+        log99('cd___init__')
         super(FormAwareValueRelationConfigDlg, self).__init__( vl, fieldIdx, parent )
         ui_path = os.path.join(os.path.dirname(__file__), 'gui/FormAwareValueRelationConfigDlg.ui')
         uic.loadUi(ui_path, self)
@@ -494,6 +516,7 @@ class FormAwareValueRelationConfigDlg(QgsEditorConfigWidget):
 
 
     def config(self):
+        log99('cd_config')
         cfg = dict()
         cfg["Layer"] = self.mLayerName.currentLayer().id() if self.mLayerName.currentLayer() else ''
         cfg["Key"] = self.mKeyColumn.currentField()
@@ -508,6 +531,7 @@ class FormAwareValueRelationConfigDlg(QgsEditorConfigWidget):
         return cfg
 
     def setConfig(self, config ):
+        log99('cd_setConfig')
         lyr = QgsProject.instance().mapLayer( config.get( "Layer" ) )
         #lyr = QgsMapLayerRegistry.instance().mapLayer( config.get( "Layer" ) )
         self.mLayerName.setLayer( lyr )
@@ -522,6 +546,7 @@ class FormAwareValueRelationConfigDlg(QgsEditorConfigWidget):
 
 
     def editExpression(self):
+        log99('cd_editExpression')
         vl = self.mLayerName.currentLayer()
         if not vl:
             return
@@ -530,9 +555,10 @@ class FormAwareValueRelationConfigDlg(QgsEditorConfigWidget):
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes( vl ))
 
         dlg = QgsExpressionBuilderDialog( vl, self.mFilterExpression.toPlainText(), self, "generic", context )
-        dlg.setWindowTitle( tr( "Edit filter expression" ) )
+        dlg.setWindowTitle( "gylle Edit filter expression gylle" )
+        #dlg.setWindowTitle( tr( "Edit filter expression" ) )
 
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec_():
             self.mFilterExpression.setText( dlg.expressionBuilder().expressionText() )
 
 
